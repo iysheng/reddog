@@ -10,6 +10,7 @@ $(TARGET):$(addsuffix .o,$(TARGET))
 
 %:%.o
 	${CROSS_COMPILE}gcc $(LDFLAGS) $< -o $@
+	cp -fv $@ ../test_reddog
 %.o:%.c
 	${CROSS_COMPILE}gcc -c $< -o $@
 

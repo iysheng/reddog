@@ -24,6 +24,7 @@ file_info_t g_file_info;
 struct sockaddr_in g_file_sock;
 pthread_t g_recv_thread;
 char g_scan_dev_name[SCAN_DEV_NAME_LEN];
+//char * g_buf;
 
 static int do_with_buf(int socked_fd, char *buf, int buf_len) {
     long int data_index = 0, data_index_tmp = 0;
@@ -73,7 +74,8 @@ void *do_recv_from_server(void *argv)
     ssize_t ret = 0;
     struct sockaddr_in sockadd_src;
     socklen_t sockadd_src_len;
-    char * buf = (char *)calloc(0, sizeof(char) * MAX_NET_BUF);
+    
+    char *buf = (char *)malloc(sizeof(char) * 10);
     printf("YYS %s [%d]\n", __func__, __LINE__);
     if (buf == NULL) {
         ret = -ENOMEM;
@@ -109,8 +111,9 @@ int do_file_ack(int sockfd, struct sockaddr_in *dest_addr, file_frame_t * file_f
     free(file_fram_ptr->frame_data);
     file_fram_ptr->frame_data = NULL;
     printf("YYS %s [%d] ret=%d fd=%d\n", __func__, __LINE__, ret, sockfd);
+    do_recv_from_server(&sockfd);
 //    ret = pthread_create(&g_recv_thread, NULL, do_recv_from_server, (void *)(&sockfd));
-    ret = pthread_create(&g_recv_thread, NULL, do_recv_from_server, NULL);
+//    ret = pthread_create(&g_recv_thread, NULL, do_recv_from_server, NULL);
     printf("YYS %s [%d] ret=%d fd=%d\n", __func__, __LINE__, ret, sockfd);
     if (ret) 
         printf("failed to create pthread\n");

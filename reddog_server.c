@@ -102,6 +102,7 @@ static int do_with_buf(int socked_fd, char *buf, int buf_len) {
             return ret;
         }
         g_buf_len = BUF_PTHREAD_INDEX_OFFSET + sizeof(g_pthread_index);
+        printf("YYS %s [%d] g_buf_len=%d\n", __func__, __LINE__, g_buf_len);
         g_pthread_index++;
         break;
     case FILE_DATA:
@@ -128,12 +129,6 @@ static void *do_recv_from_client(void *argv)
     struct pollfd read_fd[POLL_READFD_NUM];
     struct sockaddr_in sockadd_src;
     socklen_t sockadd_src_len;
-    g_buf = calloc(0, sizeof(char) * MAX_NET_BUF);
-    
-    if (g_buf == NULL) {
-        ret = -ENOMEM;
-        goto rec_failed;
-    }
 
     read_fd[0].fd = *(int *)argv;
     read_fd[0].events = POLLIN;
@@ -141,15 +136,15 @@ static void *do_recv_from_client(void *argv)
     for (;;) {
         ret = poll(read_fd, POLL_READFD_NUM, POLL_TIME_OUT);
         if (read_fd[0].revents & POLLIN) {
-            //printf("YYS %s [%d]\n", __func__, __LINE__);
+            printf("YYS %s [%d]\n", __func__, __LINE__);
             ///对g_buf加锁访问
             if ((ret = recvfrom(*(int *)argv ,g_buf, MAX_NET_BUF, 0, (struct sockaddr *)(&sockadd_src),
                 &sockadd_src_len)) > 0) {
                 ret = do_with_buf(*(int *)argv, g_buf, ret);
                 if (ret == 0) {
-                    sendto(*(int *)argv, g_buf, g_buf_len, 0, (struct sockaddr *)(&sockadd_src),
-                    sizeof(struct sockaddr));
-                    printf("YYS %s [%d] ret=%d\n", __func__, __LINE__, ret);
+                    ret = sendto(*(int *)argv, g_buf, g_buf_len, 0, (struct sockaddr *)(&sockadd_src),
+                    sockadd_src_len);
+                    printf("YYS %s [%d] ret=%d errno=%d\n", __func__, __LINE__, ret, errno);
                 }
             } else {
                 ret = (ssize_t)errno;
@@ -159,8 +154,6 @@ static void *do_recv_from_client(void *argv)
     }
 
 rec_failed:
-    if (g_buf)
-        free(g_buf);
     return (void *)ret;
 }
 
@@ -187,7 +180,11 @@ int main(int argc, char *argv[])
         ret = errno;
         goto fail;
     }
-
+    g_buf = (char *)calloc(0, sizeof(char) * MAX_NET_BUF);
+    if (g_buf == NULL) {
+        ret = -ENOMEM;
+        goto fail;
+    }
     ret = pthread_create(&recv_thread, NULL, do_recv_from_client, (void *)(&g_sockfd));
     if (ret) 
         printf("failed to create pthread\n");
@@ -202,6 +199,8 @@ int main(int argc, char *argv[])
             */
     }
     
+    if (g_buf)
+        free(g_buf);
 fail:
     return ret;
 }
